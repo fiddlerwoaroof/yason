@@ -446,3 +446,7 @@ LOWERCASE-KEYS? says whether the key should be in lowercase."
   (:method (object)
     (with-object ()
       (yason:encode-slots object))))
+
+(defmethod encode (object &stream stream)
+  (yason:with-output (s)
+    (yason:encode-object o)))
