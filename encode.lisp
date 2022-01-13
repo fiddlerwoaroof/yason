@@ -443,6 +443,9 @@ LOWERCASE-KEYS? says whether the key should be in lowercase."
    "Generic function to encode an object. The default implementation
     opens a new object encoding context and calls ENCODE-SLOTS on
     the argument.")
+  (:method around (object)
+    (call-next-method)
+    object)
   (:method (object)
     (with-object ()
       (yason:encode-slots object))))
