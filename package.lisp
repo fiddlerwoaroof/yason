@@ -10,7 +10,7 @@
   (:use :cl)
 
   (:export
-   ;; Parser
+   ;; * Parser
    #:parse
    #:*parse-object-key-fn*
    #:*parse-object-as*
@@ -23,7 +23,14 @@
    #:false
    #:null
 
-   ;; Basic encoder interface
+   ;; ** Parser errors
+   #:json-parse-error
+   #:invalid-constant
+   #:cannot-convert-key
+   #:duplicate-key
+   #:expected-colon
+
+   ;; * Basic encoder interface
    #:encode
    #:encode-slots
    #:encode-object

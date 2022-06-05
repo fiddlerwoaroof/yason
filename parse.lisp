@@ -56,11 +56,11 @@
         (let ((buffer (make-string 6)))
           (read-sequence buffer input)
           (when (not (string= buffer "\\u" :end1 2))
-            (error "Lead Surrogate without Tail Surrogate"))
+            (error 'json-parse-error :message "Lead Surrogate without Tail Surrogate"))
           (let ((tail-code (parse-integer buffer :radix 16 :start 2)))
             (when (not (and (>= tail-code #xdc00)
                             (<= tail-code #xdfff)))
-              (error "Lead Surrogate without Tail Surrogate"))
+              (error 'json-parse-error :message "Lead Surrogate without Tail Surrogate"))
             (code-char (+ #x010000
                           (ash (- char-code #xd800) 10)
                           (- tail-code #xdc00)))))
@@ -114,6 +114,8 @@
   (skip-whitespace input)
   (peek-char nil input eof-error-p))
 
+
+
 (defun parse-constant (input)
   (destructuring-bind (expected-string return-value)
       (find (peek-char nil input nil)
@@ -124,22 +126,8 @@
             :test #'eql)
     (loop for char across expected-string
           unless (eql (read-char input nil) char)
-            do (error "invalid constant"))
+            do (error 'invalid-constant))
     return-value))
-
-(define-condition cannot-convert-key (error)
-  ((key-string :initarg :key-string
-               :reader key-string))
-  (:report (lambda (c stream)
-             (format stream "cannot convert key ~S used in JSON object to hash table key"
-                     (key-string c)))))
-
-(define-condition duplicate-key (error)
-  ((key-string :initarg :key-string
-               :reader key-string))
-  (:report (lambda (c stream)
-             (format stream "Duplicate dict key ~S"
-                     (key-string c)))))
 
 
 (defun create-container (ht)
@@ -159,13 +147,6 @@
     (:hash-table
      (setf (gethash key to) value)
      to)))
-
-(define-condition expected-colon (error)
-  ((key-string :initarg :key-string
-               :reader key-string))
-  (:report (lambda (c stream)
-             (format stream "expected colon to follow key ~S used in JSON object"
-                     (key-string c)))))
 
 (defun parse-object (input)
   (let* ((ht (make-hash-table :test #'equal))
@@ -265,9 +246,12 @@
   Returns the lisp representation of the JSON structure parsed.  The
   keyword arguments can be used to override the parser settings as
   defined by the respective special variables."
-  (let ((*parse-object-key-fn* object-key-fn)
-        (*parse-object-as* object-as)
-        (*parse-json-arrays-as-vectors* json-arrays-as-vectors)
-        (*parse-json-booleans-as-symbols* json-booleans-as-symbols)
-        (*parse-json-null-as-keyword* json-nulls-as-keyword))
-    (parse% input)))
+  (handler-case (let ((*parse-object-key-fn* object-key-fn)
+                      (*parse-object-as* object-as)
+                      (*parse-json-arrays-as-vectors* json-arrays-as-vectors)
+                      (*parse-json-booleans-as-symbols* json-booleans-as-symbols)
+                      (*parse-json-null-as-keyword* json-nulls-as-keyword))
+                  (parse% input))
+    (error (c)
+      (error 'wrapped-parse-error
+             :condition c))))

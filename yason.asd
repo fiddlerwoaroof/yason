@@ -28,5 +28,6 @@
 
   :depends-on (:alexandria :trivial-gray-streams)
   :components ((:file "package")
-	       (:file "encode" :depends-on ("package"))
-	       (:file "parse" :depends-on ("package"))))
+               (:file "encode" :depends-on ("package"))
+               (:file "parse-errors" :depends-on ("package"))
+               (:file "parse" :depends-on ("parse-errors" "package"))))

@@ -144,30 +144,30 @@
 
 (deftest :yason "symbols-as-keys"
   (test-condition
-    (yason:with-output-to-string* (:stream-symbol s)
-      (let ((yason:*symbol-key-encoder* #'yason:encode-symbol-as-lowercase))
-        (yason:encode-alist
-          `((:|abC| . 3))
-          s)))
-    'error)
+   (yason:with-output-to-string* (:stream-symbol s)
+     (let ((yason:*symbol-key-encoder* #'yason:encode-symbol-as-lowercase))
+       (yason:encode-alist
+        `((:|abC| . 3))
+        s)))
+   'error)
   (test-equal "{\"a\":3}"
               (yason:with-output-to-string* (:stream-symbol s)
                 (let ((yason:*symbol-key-encoder* #'yason:encode-symbol-as-lowercase))
                   (yason:encode-alist
-                    `((:a . 3))
-                    s)))))
+                   `((:a . 3))
+                   s)))))
 
 (deftest :yason "symbols-as-ht-keys"
   (test-equal "{\"bar\":2}"
               (let* ((yason:*symbol-key-encoder* #'yason:encode-symbol-as-lowercase))
                 (with-output-to-string (*standard-output*)
-                  (yason:with-output (*standard-output*) 
+                  (yason:with-output (*standard-output*)
                     (yason:encode (alexandria:plist-hash-table `(:bar 2))))))))
 
 (deftest :yason "ENCODE-as-obj-value"
   (test-equal "{\"foo\":1}"
               (with-output-to-string (*standard-output*)
-                (yason:with-output (*standard-output*) 
+                (yason:with-output (*standard-output*)
                   (yason:with-object ()
                     (yason:with-object-element ("foo")
                       (yason:encode 1)))))))
@@ -175,7 +175,7 @@
 (deftest :yason "ENCODE-as-obj-value-2"
   (test-equal "{\"baz\":12,\"foo\":{\"bar\":1}}"
               (with-output-to-string (*standard-output*)
-                (yason:with-output (*standard-output*) 
+                (yason:with-output (*standard-output*)
                   (yason:with-object ()
                     (yason:with-object-element ("baz")
                       (yason:encode 12))
@@ -195,9 +195,9 @@
                       (yason:with-object ()
                         (yason:with-object-element ("far")
                           (yason:encode 8))
-                        (yason:encode-object-elements 
-                          "near" 9
-                          "there" 1))
+                        (yason:encode-object-elements
+                         "near" 9
+                         "there" 1))
                       (yason:encode-array-element 7))
                     (yason:with-object ()
                       (yason:encode-object-element "foo" "bar")
@@ -239,6 +239,6 @@
 
 (deftest :yason "duplicate-key"
   (test-condition (yason:parse "{\"a\":1,\"a\":2}")
-                  'yason::duplicate-key)
+                  'yason:duplicate-key)
   (test-condition (yason:parse "{\"a\":1,\"a\\ud800\":2}")
-                  'error))
+                  'yason:json-parse-error))
