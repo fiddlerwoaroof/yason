@@ -7,7 +7,7 @@
 
 (in-package :yason)
 
-(defvar *json-output*)
+(defvar *json-output* (make-json-output-stream *standard-output*))
 
 (defparameter *default-indent* nil
   "Set to T or an numeric indentation width in order to have YASON
@@ -37,8 +37,9 @@
 (defgeneric encode (object &optional stream)
 
   (:documentation "Encode OBJECT to STREAM in JSON format.  May be
-  specialized by applications to perform specific rendering.  STREAM
-  defaults to *STANDARD-OUTPUT*."))
+  specialized by applications to perform specific rendering.
+  STREAM must be a JSON-OUTPUT-STREAM; you can get one via
+  MAKE-JSON-OUTPUT-STREAM, WITH-OUTPUT, or WITH-OUTPUT-TO-STRING*."))
 
 (defparameter *char-replacements*
   (alexandria:plist-hash-table
@@ -63,8 +64,7 @@
                   #xDC00)))
     (format stream "\\u~4,'0X\\u~4,'0X" upper lower)))
 
-(defmethod encode ((string string) &optional (stream *json-output*))
-  (write-char #\" stream)
+(defun escape-string-to-stream (string stream)
   (dotimes (i (length string))
     (let* ((char (aref string i))
            (replacement (gethash char *char-replacements*)))
@@ -76,9 +76,27 @@
         ;; Non-BMP characters must be escaped as a UTF-16 surrogate pair.
         ((<= #x010000 (unicode-code char) #x10FFFF)
          (write-surrogate-pair-escape (unicode-code char) stream))
-        (t (write-char char stream)))))
+        (t (write-char char stream))))))
+
+(defmethod encode ((string string) &optional (stream *json-output*))
+  (write-char #\" stream)
+  (escape-string-to-stream string stream)
   (write-char #\" stream)
   string)
+
+(defstruct (raw-json-output
+             (:constructor make-raw-json-output (stg)))
+  "Escape mechanism to allow more intricate JSON exports.
+    (MAKE-RAW-JSON-OUTPUT X)
+   causes the string X to be written to the JSON output verbatim,
+   ie. without any encoding.
+   (Bad) example:
+      (yason:encode (vector 1 2 (make-raw-json-output \"{}\")"
+  (stg nil :type string))
+
+(defmethod encode ((raw raw-json-output) &optional (stream *json-output*))
+  (princ (raw-json-output-stg raw) stream)
+  raw)
 
 (defmethod encode ((object ratio) &optional (stream *json-output*))
   (encode (coerce object 'double-float) stream)
@@ -154,9 +172,10 @@
 
 (defmethod encode ((object symbol) &optional (stream *json-output*))
   (let ((new (funcall *symbol-encoder* object)))
-    (assert (stringp new))
-    (encode new stream))
-  )
+    ;; We require a string-like output here to ensure that the JSON format stays consistent.
+    (assert (or (stringp new)
+                (raw-json-output-p new)))
+    (encode new stream)))
 
 (defun encode-symbol-key-error (key)
   (declare (ignore key))
@@ -187,7 +206,7 @@
         (*package* (symbol-package sym)))
     (if (keywordp sym)
         (format nil "~a~s"
-                (or prefix "") 
+                (or prefix "")
                 sym)
         (format nil "~a~a::~s"
                 (or prefix "")
